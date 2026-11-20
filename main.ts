@@ -6,12 +6,21 @@
 // grades ($MAKEFUN_OUTPUT_DIR, default "out"). No network, no clock,
 // no randomness: running it twice writes byte-identical output.
 
-import { copyFile, mkdir } from "node:fs/promises";
+import { copyFile, mkdir, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = dirname(fileURLToPath(import.meta.url));
 const outDir = process.env.MAKEFUN_OUTPUT_DIR ?? "out";
+const src = join(repoRoot, "entry.png");
+const dst = join(outDir, "entry.png");
 
 await mkdir(outDir, { recursive: true });
-await copyFile(join(repoRoot, "entry.png"), join(outDir, "entry.png"));
+await copyFile(src, dst);
+
+// Fail loudly on a partial copy instead of grading a corrupt image.
+const [srcStat, dstStat] = await Promise.all([stat(src), stat(dst)]);
+if (srcStat.size !== dstStat.size) {
+  throw new Error(`entry.png copy incomplete: ${dstStat.size} of ${srcStat.size} bytes`);
+}
+console.log(`wrote ${dst} (${dstStat.size} bytes)`);
